@@ -1,0 +1,533 @@
+import { Input, Tooltip, message as antMessage } from 'antd';
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
+import { FiCheck, FiClock, FiCopy, FiEye } from "react-icons/fi";
+import { IoCloseOutline } from "react-icons/io5";
+import { useUpdateStatusUserMutation } from '../../features/verifyRequest/VerifyRequestApi';
+
+const { TextArea } = Input;
+
+const VerifyRequestTableBody = ({ item, list }) => {
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [revisionMessage, setRevisionMessage] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
+
+  const [updateStatus, { isLoading }] = useUpdateStatusUserMutation();
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return isNaN(date) ? dateString : date.toLocaleDateString("en-GB");
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return isNaN(date) ? dateString : date.toLocaleString("en-GB");
+  };
+
+  const showViewModal = () => {
+    setIsViewModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsViewModalOpen(false);
+  };
+
+  const showRevisionModal = () => {
+    setIsRevisionModalOpen(true);
+  };
+
+  const handleRevisionModalClose = () => {
+    setIsRevisionModalOpen(false);
+    setRevisionMessage('');
+  };
+
+  const copyToClipboard = async (text, id) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand("copy");
+        document.body.removeChild(textArea);
+
+        if (!successful) {
+          throw new Error("Copy command was unsuccessful");
+        }
+      }
+
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+    }
+  };
+
+  // Get status badge color and icon
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'varified':
+        return {
+          class: "bg-green-100 text-green-800 border border-green-200",
+          icon: <FiCheck className="w-3 h-3 mr-1" />,
+          text: "Verified"
+        };
+      case 'pending':
+        return {
+          class: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+          icon: <FiClock className="w-3 h-3 mr-1" />,
+          text: "Pending"
+        };
+      case 'rejected':
+        return {
+          class: "bg-red-100 text-red-800 border border-red-200",
+          icon: <FiCheck className="w-3 h-3 mr-1" />,
+          text: "Rejected"
+        };
+      default:
+        return {
+          class: "bg-gray-100 text-gray-800 border border-gray-200",
+          icon: null,
+          text: status || "N/A"
+        };
+    }
+  };
+
+  // Get role badge color
+  const getRoleBadge = (role) => {
+    switch (role) {
+      case 'freelancer':
+        return "bg-blue-100 text-blue-800 border border-blue-200";
+      case 'client':
+        return "bg-purple-100 text-purple-800 border border-purple-200";
+      case 'company':
+        return "bg-indigo-100 text-indigo-800 border border-indigo-200";
+      case 'admin':
+        return "bg-red-100 text-red-800 border border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border border-gray-200";
+    }
+  };
+
+  // ✅ Verified Flow - Only status, no message
+  const handleVerified = async () => {
+    try {
+      const result = await updateStatus({
+        id: item._id,
+        status: 'varified',
+        message: '' // No message for verification
+      }).unwrap();
+
+      if (result.success) {
+        antMessage.success('Successfully Verified');
+        handleModalClose();
+      } else {
+        antMessage.error(result.message || 'Verification failed');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      antMessage.error('Failed to verify user');
+    }
+  };
+
+  // 🔄 Revision Flow - Status and message both
+  const handleRevisionSubmit = async () => {
+    if (!revisionMessage.trim()) {
+      antMessage.warning('Please enter a revision message');
+      return;
+    }
+
+    try {
+      const result = await updateStatus({
+        id: item._id,
+        status: 'revision',
+        message: revisionMessage.trim()
+      }).unwrap();
+
+      if (result.success) {
+        antMessage.success('Revision Sent Successfully');
+        handleRevisionModalClose();
+        handleModalClose();
+      } else {
+        antMessage.error(result.message || 'Revision request failed');
+      }
+    } catch (error) {
+      console.error('Revision error:', error);
+      antMessage.error('Failed to send revision request');
+    }
+  };
+
+  const statusInfo = getStatusBadge(item.isVarified);
+
+  return (
+    <>
+      {/* Table Row */}
+      <div className="grid items-center grid-cols-11 gap-2 px-2 my-3 text-sm bg-white rounded-lg whitespace-nowrap border border-gray-200 hover:bg-gray-50 transition-colors">
+        {/* SL */}
+        <div className="flex items-center justify-center py-3 font-medium">{list}</div>
+
+        {/* User Name */}
+        <div className="flex items-center justify-center py-3">
+          <div className="text-center">
+            <Tooltip title={item.fullName}>
+              <div className="font-medium max-w-[120px] truncate cursor-pointer">
+                {item.fullName?.length > 10
+                  ? item.fullName.slice(0, 10) + "..."
+                  : item.fullName || "N/A"}
+              </div>
+            </Tooltip>
+
+            {item.companyName && (
+              <Tooltip title={item.companyName}>
+                <div className="text-xs text-gray-500 mt-1 max-w-[120px] truncate cursor-pointer">
+                  {item.companyName.length > 15
+                    ? item.companyName.slice(0, 15) + "..."
+                    : item.companyName}
+                </div>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {/* Email */}
+        <div className="flex items-center justify-center py-3">
+          <Tooltip title={item.email}>
+            <span className="text-xs md:text-sm max-w-[150px] truncate cursor-pointer">
+              {item.email?.length > 20
+                ? item.email.slice(0, 20) + "..."
+                : item.email || "N/A"}
+            </span>
+          </Tooltip>
+        </div>
+
+        {/* Role */}
+        <div className="flex items-center justify-center py-3">
+          <span className={`px-2 py-1 rounded text-xs ${getRoleBadge(item.role)}`}>
+            {item.role ? item.role.charAt(0).toUpperCase() + item.role.slice(1) : "N/A"}
+          </span>
+        </div>
+
+        {/* Designation */}
+        <div className="flex items-center justify-center py-3">
+          {item.designation || item.role === 'company' ? 'Company' : item.role === 'client' ? 'Client' : 'N/A'}
+        </div>
+
+        {/* Location */}
+        <div className="flex items-center justify-center py-3">
+          {item.location || "N/A"}
+        </div>
+
+        {/* Experience */}
+        <div className="flex items-center justify-center py-3">
+          {item.yearsOfExperience || "N/A"}
+        </div>
+
+        {/* Daily Rate */}
+        <div className="flex items-center justify-center py-3">
+          {item.dailyRate ? `$${item.dailyRate}` : "N/A"}
+        </div>
+
+        {/* Verification Status */}
+        <div className="flex items-center justify-center py-3">
+          <span className={`px-2 py-1 rounded text-xs flex items-center ${statusInfo.class}`}>
+            {statusInfo.icon}
+            {statusInfo.text}
+          </span>
+        </div>
+
+        {/* Registration Date */}
+        <div className="flex items-center justify-center py-3">
+          {formatDate(item.createdAt)}
+        </div>
+
+        {/* Action */}
+        <div className="flex items-center justify-center py-3 space-x-2">
+          <button
+            onClick={showViewModal}
+            className="flex items-center gap-1 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors text-xs"
+            title="View User Details"
+          >
+            <FiEye className="w-3 h-3" />
+            View
+          </button>
+        </div>
+      </div>
+
+      {/* User Details Modal */}
+      <AnimatePresence>
+        {isViewModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+            onClick={handleModalClose}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="relative w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleModalClose}
+                className="absolute text-gray-500 top-3 right-3 hover:text-gray-800"
+              >
+                <IoCloseOutline className="w-6 h-6" />
+              </button>
+
+              <h2 className="mb-4 text-xl font-bold text-center text-primary">
+                User Verification Details
+              </h2>
+
+              {/* Modal Content */}
+              <div className="space-y-4">
+                {/* Basic Information Section */}
+                <div className="p-4 border rounded-md border-primary">
+                  <h3 className="mb-3 text-lg font-semibold text-primary border-b pb-2">
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">User ID:</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-mono">
+                            {item._id ? `...${item._id.slice(-8)}` : "N/A"}
+                          </span>
+                          <FiCopy
+                            className={`w-4 h-4 cursor-pointer hover:text-primary transition-colors ${copiedId === item._id ? "text-green-500" : "text-gray-400"}`}
+                            title="Copy User ID"
+                            onClick={() => copyToClipboard(item._id, item._id)}
+                          />
+                        </div>
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Full Name:</span> {item.fullName || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Email:</span> {item.email || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Role:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getRoleBadge(item.role)}`}>
+                          {item.role ? item.role.charAt(0).toUpperCase() + item.role.slice(1) : "N/A"}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Verification Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs flex items-center w-fit ${statusInfo.class}`}>
+                          {statusInfo.icon}
+                          {statusInfo.text}
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Registration Date:</span> {formatDateTime(item.createdAt)}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Last Updated:</span> {formatDateTime(item.updatedAt)}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Active Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${item.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                          {item.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Professional Information Section */}
+                <div className="p-4 border rounded-md border-primary">
+                  <h3 className="mb-3 text-lg font-semibold text-primary border-b pb-2">
+                    Professional Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Designation:</span> {item.designation || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Location:</span> {item.location || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Experience:</span> {item.yearsOfExperience || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Daily Rate:</span> {item.dailyRate ? `$${item.dailyRate}` : "N/A"}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Service Type:</span> {item.serviceType || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Category:</span> {item.categoryType || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Jobs Done:</span> {item.jobsDone || 0}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Followers:</span> {item.followers || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Details Section */}
+                <div className="p-4 border rounded-md border-primary">
+                  <h3 className="mb-3 text-lg font-semibold text-primary border-b pb-2">
+                    Additional Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Languages:</span> {item.language?.join(", ") || "N/A"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Stripe Connected:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${item.isStripeConnectedAccount ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                          {item.isStripeConnectedAccount ? "Yes" : "No"}
+                        </span>
+                      </p>
+                      {item.companyName && (
+                        <p className="text-sm">
+                          <span className="font-medium">Company Name:</span> {item.companyName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Free Job Posts:</span> {item.freeJobPost || 0}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Subscribed:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${item.isSubscribed ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+                          {item.isSubscribed ? "Yes" : "No"}
+                        </span>
+                      </p>
+                      {item.aboutCompany && (
+                        <p className="text-sm">
+                          <span className="font-medium">About:</span>
+                          <div className="mt-1 p-2 bg-gray-100 rounded text-xs">
+                            {item.aboutCompany}
+                          </div>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons - Only show for pending verification */}
+
+                <div className="flex justify-center gap-5 pt-4">
+                  <button
+                    onClick={showRevisionModal}
+                    disabled={isLoading}
+                    className="px-10 py-3 bg-[#C68C4E] text-white rounded-md hover:bg-[#B57A3A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <FiClock className="w-4 h-4" />
+                    Revision
+                  </button>
+                  <button
+                    onClick={handleVerified}
+                    disabled={isLoading}
+                    className="px-10 py-3 bg-green-500 rounded-md text-white hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <FiCheck className="w-4 h-4" />
+                    Verified
+                  </button>
+                </div>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Revision Modal */}
+      <AnimatePresence>
+        {isRevisionModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50"
+            onClick={handleRevisionModalClose}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="relative w-full max-w-md p-6 bg-white rounded-lg shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleRevisionModalClose}
+                className="absolute text-gray-500 top-3 right-3 hover:text-gray-800"
+              >
+                <IoCloseOutline className="w-6 h-6" />
+              </button>
+
+              <h2 className="mb-4 text-xl font-bold text-center text-[#C68C4E]">
+                Request Revision
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Revision Message *
+                  </label>
+                  <TextArea
+                    rows={6}
+                    placeholder="Please provide detailed feedback about what needs to be revised for verification..."
+                    value={revisionMessage}
+                    onChange={(e) => setRevisionMessage(e.target.value)}
+                    className="w-full border-gray-300 focus:border-[#C68C4E] focus:ring-[#C68C4E]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This message will be sent to the user explaining what needs to be revised.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleRevisionModalClose}
+                    disabled={isLoading}
+                    className="flex-1 bg-gray-500 text-white py-3 rounded hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRevisionSubmit}
+                    disabled={isLoading || !revisionMessage.trim()}
+                    className="flex-1 bg-[#C68C4E] text-white py-3 rounded hover:bg-[#B57A3A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? 'Sending...' : 'Send Revision'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+export default VerifyRequestTableBody;
