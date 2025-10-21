@@ -30,6 +30,7 @@ export const baseApi = createApi({
     "project",
     "report",
     "verifyRequest",
-    "contacts"
+    "contacts",
+    "social"
   ],
 });

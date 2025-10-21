@@ -10,13 +10,14 @@ import {
   Radio,
   Upload
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useCreateSubscriptionMutation,
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,
 } from "../../features/subscription/subscriptionApi";
 import ClientSubscription from "./ClientSubscription";
+import CompanySubscription from "./CompanySubscription";
 import FreeLacherSubscription from "./FreeLacherSubscription";
 
 function SubscriptionManagement() {
@@ -33,7 +34,6 @@ function SubscriptionManagement() {
   const [jobCount, setJobCount] = useState(3);
   const [isUnlimitedTender, setIsUnlimitedTender] = useState(true);
   const [isUnlimitedJob, setIsUnlimitedJob] = useState(true);
-  const [isBadge, setIsBadge] = useState(false);
   const [isSupport, setIsSupport] = useState(false);
   const { data: subscriptions, isLoading, isError } = useGetSubscriptionQuery();
   const [createSubscription] = useCreateSubscriptionMutation();
@@ -50,6 +50,27 @@ function SubscriptionManagement() {
     (subscription) => subscription.category === "company"
   );
 
+  // Effect to handle trail plan auto-fill based on category and plan type
+  useEffect(() => {
+    if (planType === "trial") {
+      if (planCategory === "freelancer") {
+        setPlanName("Free");
+        setPlanPrice(0);
+        setIsUnlimitedJob(false);
+        setJobCount(5);
+        setIsUnlimitedTender(false);
+        setTenderCount(15);
+      } else if (planCategory === "client") {
+        setPlanName("Free");
+        setPlanPrice(0);
+        setIsUnlimitedJob(false);
+        setJobCount(1);
+        setIsUnlimitedTender(false);
+        setTenderCount(1);
+      }
+    }
+  }, [planType, planCategory]);
+
   const handleCreateSubscription = () => {
     setEditingSubscription(null);
     setPlanName("");
@@ -62,7 +83,6 @@ function SubscriptionManagement() {
     setJobCount(3);
     setIsUnlimitedTender(true);
     setIsUnlimitedJob(true);
-    setIsBadge(false);
     setIsSupport(false);
     setIsModalVisible(true);
   };
@@ -85,7 +105,6 @@ function SubscriptionManagement() {
       subscription.jobCount === -1 ||
       subscription.jobCount === "unlimited"
     );
-    setIsBadge(subscription.isBadge || false);
     setIsSupport(subscription.isSupport || false);
     setIsModalVisible(true);
   };
@@ -103,7 +122,6 @@ function SubscriptionManagement() {
     setJobCount(3);
     setIsUnlimitedTender(true);
     setIsUnlimitedJob(true);
-    setIsBadge(false);
     setIsSupport(false);
   };
 
@@ -113,7 +131,7 @@ function SubscriptionManagement() {
       message.error("Plan name is required!");
       return;
     }
-    if (!planPrice || planPrice <= 0) {
+    if (planPrice < 0) {
       message.error("Valid price is required!");
       return;
     }
@@ -163,7 +181,6 @@ function SubscriptionManagement() {
         );
       }
 
-      formData.append("isBadge", isBadge.toString());
       formData.append("isSupport", isSupport.toString());
 
       // Add benefits as separate entries
@@ -184,8 +201,8 @@ function SubscriptionManagement() {
         }).unwrap();
         message.success("Subscription updated successfully!");
       } else {
-        await createSubscription(formData).unwrap();
-        message.success("Subscription created successfully!");
+        const response = await createSubscription(formData).unwrap();
+        message.success(response.message || "Subscription created successfully!");
       }
 
       setIsModalVisible(false);
@@ -200,11 +217,10 @@ function SubscriptionManagement() {
       setJobCount(3);
       setIsUnlimitedTender(false);
       setIsUnlimitedJob(false);
-      setIsBadge(false);
       setIsSupport(false);
     } catch (error) {
-      message.error("Failed to save subscription");
-      console.error("Error:", error);
+      message.error(error?.data?.message || "Failed to save subscription");
+      console.error("Error:", error?.data?.message);
     }
   };
 
@@ -300,7 +316,7 @@ function SubscriptionManagement() {
             onEdit={handleEditSubscription}
           />
         ) : (
-          <ClientSubscription
+          <CompanySubscription
             subscriptions={companySubscriptions}
             onEdit={handleEditSubscription}
           />
@@ -333,7 +349,13 @@ function SubscriptionManagement() {
                 placeholder="Enter plan name"
                 className="w-full"
                 status={!planName.trim() ? "error" : ""}
+                disabled={planType === "trial"}
               />
+              {planType === "trial" && (
+                <p className="text-xs text-gray-500 mt-1">
+                  trial plans are automatically named "Free"
+                </p>
+              )}
             </div>
 
             <div className="mb-4">
@@ -347,8 +369,44 @@ function SubscriptionManagement() {
                 min={0}
                 style={{ width: "100%" }}
                 addonBefore="$"
-                status={!planPrice || planPrice <= 0 ? "error" : ""}
+                status={planPrice < 0 ? "error" : ""}
+                disabled={planType === "trial"}
               />
+              {planType === "trial" && (
+                <p className="text-xs text-gray-500 mt-1">
+                  trial plans are free ($0)
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 text-lg font-semibold mb-2">
+                Billing Type <span className="text-red-500">*</span>
+              </label>
+              <Radio.Group
+                value={planType}
+                onChange={(e) => setPlanType(e.target.value)}
+              >
+                <Radio value="month">Monthly</Radio>
+                <Radio value="year">Yearly</Radio>
+                {planCategory !== "company" && (
+                  <Radio value="trial">trial</Radio>
+                )}
+              </Radio.Group>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 text-lg font-semibold mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <Radio.Group
+                value={planCategory}
+                onChange={(e) => setPlanCategory(e.target.value)}
+              >
+                <Radio value="freelancer">Freelancer</Radio>
+                <Radio value="client">Client</Radio>
+                <Radio value="company">Company</Radio>
+              </Radio.Group>
             </div>
 
             {/* Tender Count - Only show for freelancer and client */}
@@ -366,6 +424,7 @@ function SubscriptionManagement() {
                       checked={isUnlimitedTender}
                       onChange={() => setIsUnlimitedTender(true)}
                       className="mr-2"
+                      disabled={planType === "trial"}
                     />
                     <label htmlFor="unlimitedTender" className="text-gray-700">
                       Unlimited
@@ -379,6 +438,7 @@ function SubscriptionManagement() {
                       checked={!isUnlimitedTender}
                       onChange={() => setIsUnlimitedTender(false)}
                       className="mr-2"
+                      disabled={planType === "trial"}
                     />
                     <label htmlFor="limitedTender" className="text-gray-700">
                       Others
@@ -392,7 +452,13 @@ function SubscriptionManagement() {
                       min={1}
                       style={{ width: "100%" }}
                       addonAfter="tenders"
+                      disabled={planType === "trial"}
                     />
+                  )}
+                  {planType === "trial" && (
+                    <p className="text-xs text-gray-500">
+                      trial plans have {planCategory === "freelancer" ? "15" : "1"} tenders
+                    </p>
                   )}
                 </div>
               </div>
@@ -412,6 +478,7 @@ function SubscriptionManagement() {
                     checked={isUnlimitedJob}
                     onChange={() => setIsUnlimitedJob(true)}
                     className="mr-2"
+                    disabled={planType === "trial"}
                   />
                   <label htmlFor="unlimitedJob" className="text-gray-700">
                     Unlimited
@@ -425,6 +492,7 @@ function SubscriptionManagement() {
                     checked={!isUnlimitedJob}
                     onChange={() => setIsUnlimitedJob(false)}
                     className="mr-2"
+                    disabled={planType === "trial"}
                   />
                   <label htmlFor="limitedJob" className="text-gray-700">
                     Others
@@ -438,12 +506,20 @@ function SubscriptionManagement() {
                     min={1}
                     style={{ width: "100%" }}
                     addonAfter="jobs"
+                    disabled={planType === "trial"}
                   />
+                )}
+                {planType === "trial" && (
+                  <p className="text-xs text-gray-500">
+                    trial plans have {planCategory === "freelancer" ? "5" : "1"} jobs
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="mb-4">
+            {
+              planType !== "trial" && (
+                <div className="mb-4">
               <label className="block text-gray-700 text-lg font-semibold mb-2">
                 Additional Options
               </label>
@@ -451,50 +527,16 @@ function SubscriptionManagement() {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={isBadge}
-                    onChange={(e) => setIsBadge(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-gray-700">Is Badge</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
                     checked={isSupport}
                     onChange={(e) => setIsSupport(e.target.checked)}
                     className="mr-2"
                   />
-                  <span className="text-gray-700">Is Support</span>
+                  <span className="text-gray-700">Priority Support</span>
                 </label>
               </div>
             </div>
-
-            <div className="mb-4">
-              <label className="block text-gray-700 text-lg font-semibold mb-2">
-                Billing Type <span className="text-red-500">*</span>
-              </label>
-              <Radio.Group
-                value={planType}
-                onChange={(e) => setPlanType(e.target.value)}
-              >
-                <Radio value="month">Monthly</Radio>
-                <Radio value="year">Yearly</Radio>
-              </Radio.Group>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-gray-700 text-lg font-semibold mb-2">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <Radio.Group
-                value={planCategory}
-                onChange={(e) => setPlanCategory(e.target.value)}
-              >
-                <Radio value="freelancer">Freelancer</Radio>
-                <Radio value="client">Client</Radio>
-                <Radio value="company">Company</Radio>
-              </Radio.Group>
-            </div>
+              )
+            }
 
             <div className="mb-4">
               <label className="block text-gray-700 text-lg font-semibold mb-2">
@@ -547,7 +589,7 @@ function SubscriptionManagement() {
           </div>
 
           <div className="w-1/2 pl-4">
-            <Card className="border shadow-sm">
+            <Card className="border shadow-sm ">
               <div className="flex flex-col items-center mb-4">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-4">
                   {planImage ? (
@@ -568,9 +610,13 @@ function SubscriptionManagement() {
               <div className="text-center mb-4">
                 <div className="flex items-center justify-center">
                   <span className="text-4xl font-bold">${planPrice || 0}</span>
-                  <span className="text-gray-600">/{planType === "month" ? "mo" : "yr"}</span>
+                  <span className="text-gray-600">
+                    /{planType === "month" ? "mo" : planType === "year" ? "yr" : "trial"}
+                  </span>
                 </div>
-                <p className="text-gray-500 text-sm">Billed {planType === "month" ? "Monthly" : "Yearly"}</p>
+                <p className="text-gray-500 text-sm">
+                  Billed {planType === "month" ? "Monthly" : planType === "year" ? "Yearly" : "trial Period"}
+                </p>
 
                 {/* Show Tender Count only for freelancer and client */}
                 {planCategory !== "company" && (
@@ -585,6 +631,12 @@ function SubscriptionManagement() {
                   Job Count:{" "}
                   {isUnlimitedJob ? "Unlimited" : `${jobCount} jobs`}
                 </p>
+
+                {isSupport && (
+                  <p className="text-green-600 text-xs mt-2">
+                    🎧 Priority Support Included
+                  </p>
+                )}
               </div>
 
               <Divider className="my-4" />

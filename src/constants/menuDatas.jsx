@@ -63,6 +63,12 @@ export const menuDatas = [
   },
 
   {
+    icon: "/icons/sidebar/Social.png",
+    title: "Social Management",
+    link: "/social",
+  },
+
+  {
     icon: "/icons/sidebar/terms.png",
     title: "Refund Policy",
     link: "/refund-policy",

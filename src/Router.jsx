@@ -24,6 +24,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProjectManagement from "./pages/ProjectManagement/ProjectManagement";
 import Report from './pages/report/Report';
 import Service from "./pages/service/Service";
+import SocialManagement from './pages/social/socialManagement';
 import TermsConditions from "./pages/TermsConditions";
 import UserManagement from "./pages/UserManagement/UserManagement";
 import VerifyRequestManagement from './pages/verify_request/VerifyRequestManagement';
@@ -67,6 +68,7 @@ const Routers = () => {
           <Route path="verify-request" element={<VerifyRequestManagement />} />
           <Route path="report" element={<Report />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="social" element={<SocialManagement />} />
           <Route path="notification" element={<Notification />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="refund-policy" element={<TermsConditions />} />
