@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useCreateLinkMutation, useDeleteSocialLinkMutation, useGetSocialLinkQuery } from '../../features/social/socialApi';
 import { baseURLImage } from '../../utils/BaseURL';
 
-const SocialManagement = () => {
+const MarketingManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
@@ -276,4 +276,4 @@ const SocialManagement = () => {
   );
 };
 
-export default SocialManagement;
+export default MarketingManagement;
