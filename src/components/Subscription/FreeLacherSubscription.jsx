@@ -145,14 +145,14 @@ const FreeLacherSubscription = ({ subscriptions, onEdit }) => {
                     {/* Show counts if available */}
                     {plan.tenderCount && (
                       <p className="text-gray-600 text-xs mt-2">
-                        📋 {plan.tenderCount === "unlimited" || plan.tenderCount === -1
+                        📋 {plan.tenderCount === 1000000000000000 || plan.tenderCount === -1
                           ? "Unlimited Tenders"
                           : `${plan.tenderCount} Tenders`}
                       </p>
                     )}
                     {plan.jobCount && (
                       <p className="text-gray-600 text-xs mt-1">
-                        💼 {plan.jobCount === "unlimited" || plan.jobCount === -1
+                        💼 {plan.jobCount === 1000000000000000 || plan.jobCount === -1
                           ? "Unlimited Jobs"
                           : `${plan.jobCount} Jobs`}
                       </p>

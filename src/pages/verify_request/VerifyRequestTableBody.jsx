@@ -651,15 +651,29 @@ const VerifyRequestTableBody = ({ item, list }) => {
                     </h3>
                     <div className="space-y-4">
                       {/* Skills */}
+                      {/* Skills */}
                       {item.freelancerId.skills && item.freelancerId.skills.length > 0 && (
                         <div>
                           <p className="text-sm font-medium mb-2">Skills:</p>
                           <div className="flex flex-wrap gap-2">
-                            {item.freelancerId.skills.map((skill, index) => (
-                              <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                {skill}
-                              </span>
-                            ))}
+                            {item.freelancerId.skills.map((skill, index) => {
+                              // Handle both string and object formats
+                              let skillName;
+                              if (typeof skill === 'string') {
+                                skillName = skill;
+                              } else if (skill && typeof skill === 'object') {
+                                // If skill is an object, use the 'skill' property
+                                skillName = skill.skill || skill.name || 'Unknown Skill';
+                              } else {
+                                skillName = 'Invalid Skill';
+                              }
+
+                              return (
+                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                  {skillName}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -717,8 +731,8 @@ const VerifyRequestTableBody = ({ item, list }) => {
                                     <span className="ml-2 text-gray-900">{edu.institution || "N/A"}</span>
                                   </p>
                                   <p className="text-sm">
-                                    <span className="font-medium text-gray-700">Year:</span>
-                                    <span className="ml-2 text-gray-900">{edu.year || "N/A"}</span>
+                                    <span className="font-medium text-gray-700">Date:</span>
+                                    <span className="ml-2 text-gray-900">{`(${edu.startDate})` || "N/A"}-{`(${edu.endDate})` || "N/A"}</span>
                                   </p>
                                 </div>
                               </div>
@@ -737,17 +751,21 @@ const VerifyRequestTableBody = ({ item, list }) => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                   <p className="text-sm">
                                     <span className="font-medium text-gray-700">Position:</span>
-                                    <span className="ml-2 text-gray-900">{exp.position || "N/A"}</span>
+                                    <span className="ml-2 text-gray-900">{exp.project || "N/A"}</span>
                                   </p>
                                   <p className="text-sm">
                                     <span className="font-medium text-gray-700">Company:</span>
-                                    <span className="ml-2 text-gray-900">{exp.company || "N/A"}</span>
+                                    <span className="ml-2 text-gray-900">{exp.companyName || "N/A"}</span>
                                   </p>
                                   <p className="text-sm">
                                     <span className="font-medium text-gray-700">Duration:</span>
-                                    <span className="ml-2 text-gray-900">{exp.duration || "N/A"}</span>
+                                    <span className="ml-2 text-gray-900">{`(${exp.startDate})` || "N/A"}-{`(${exp.endDate=== null ? "Present" : exp.endDate})` || "N/A"}</span>
                                   </p>
                                 </div>
+                                <p className="text-sm py-3">
+                                    <span className="font-medium text-gray-700">description:</span>
+                                    <span className="ml-2 text-gray-900">{exp.description || "N/A"}</span>
+                                  </p>
                               </div>
                             ))}
                           </div>

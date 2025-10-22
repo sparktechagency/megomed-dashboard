@@ -167,17 +167,17 @@ function SubscriptionManagement() {
       if (planCategory === "company") {
         formData.append(
           "jobCount",
-          isUnlimitedJob ? "unlimited" : jobCount.toString()
+          isUnlimitedJob ? Number(1000000) : jobCount.toString()
         );
       } else {
         // For freelancer and client, add both tenderCount and jobCount
         formData.append(
           "tenderCount",
-          isUnlimitedTender ? "unlimited" : tenderCount.toString()
+          isUnlimitedTender ? Number(1000000) : tenderCount.toString()
         );
         formData.append(
           "jobCount",
-          isUnlimitedJob ? "unlimited" : jobCount.toString()
+          isUnlimitedJob ? Number(1000000) : jobCount.toString()
         );
       }
 
@@ -520,21 +520,21 @@ function SubscriptionManagement() {
             {
               planType !== "trial" && (
                 <div className="mb-4">
-              <label className="block text-gray-700 text-lg font-semibold mb-2">
-                Additional Options
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={isSupport}
-                    onChange={(e) => setIsSupport(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-gray-700">Priority Support</span>
-                </label>
-              </div>
-            </div>
+                  <label className="block text-gray-700 text-lg font-semibold mb-2">
+                    Additional Options
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isSupport}
+                        onChange={(e) => setIsSupport(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-gray-700">Priority Support</span>
+                    </label>
+                  </div>
+                </div>
               )
             }
 
