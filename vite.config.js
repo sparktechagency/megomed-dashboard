@@ -18,9 +18,11 @@
 
 
 // vite.config.js
-import { defineConfig } from 'vite'
- 
+import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite';
+
 export default defineConfig({
+  plugins: [react()],
   server: {
     host: true,        // listen on 0.0.0.0 so nginx can reach it
     port: 3001
